@@ -2,12 +2,14 @@ import { useState } from "react";
 import FractalCanvas from "./components/FractalCanvas";
 import CoordInput from "./components/CoordInput";
 import CenterDisplay from "./components/CenterDisplay";
-import { ComputeMethod } from "./services/api";
+import { ComputeMode } from "./services/api";
+import MethodSelector from "./components/MethodSelector";
 
 export default function App() {
   const [center, setCenter] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [method, setMethod] = useState<ComputeMethod>("line");
+  const [mode, setmode] = useState<ComputeMode>("line");
+  const [method, setMethod] = useState<ComputeMethod>("go");
 
   return (
     <div className="app">
@@ -19,9 +21,12 @@ export default function App() {
           zoom={zoom}
           onZoom={setZoom}
         />
+
+        <MethodSelector method={method} onChange={setMethod} />
+
         <select
-          value={method}
-          onChange={e => setMethod(e.target.value as ComputeMethod)}
+          value={mode}
+          onChange={e => setmode(e.target.value as ComputeMode)}
         >
           <option value="pixel">Per‑pixel</option>
           <option value="line">Per‑line</option>
@@ -33,6 +38,7 @@ export default function App() {
         center={center}
         zoom={zoom}
         method={method}
+        mode={method}
       />
     </div>
   );

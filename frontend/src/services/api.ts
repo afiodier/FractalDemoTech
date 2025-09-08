@@ -1,8 +1,12 @@
-export type ComputeMethod = "pixel" | "line" | "image";
+import { arrayBuffer } from "stream/consumers";
+
+export type ComputeMode = "pixel" | "line" | "image";
+export type ComputeMethod = "go" | "node" | "csharp";
 
 export type FractalParams = {
   center: { x: number; y: number };
   zoom: number;
+  mode: ComputeMode;
   method: ComputeMethod;
   width: number;
   height: number;
@@ -17,10 +21,14 @@ export type FractalResponse = {
 export async function fetchFractal(
   params: FractalParams
 ): Promise<FractalResponse> {
-  const url = `${process.env.REACT_APP_SERVER_ADDRESS}/fractal`;
+  console.log("Fetching fractal with params:", params);
+  const url = "http://localhost:5001/fractal"; //`${process.env.VITE_SERVER_ADDRESS ?? "http://localhost:5001/fractal"}/fractal`;
   const res = await fetch(
-    `${url}?method=${params.method}&width=${params.width}&height=${params.height}&centerX=${params.center.x}&centerY=${params.center.y}&zoom=${params.zoom}`
+    `${url}?method=${params.method}&mode=${params.mode}&width=${params.width}&height=${params.height}&centerX=${params.center.x}&centerY=${params.center.y}&zoom=${params.zoom}`
   );
+
+  console.log("Response status:", res.status);
+  console.log("Length of data:", (await res.json()).data.length);
   if (!res.ok) throw new Error("Network error");
   return res.json();
 }

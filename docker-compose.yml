@@ -4,15 +4,9 @@ services:
     ports:
       - "80:80"
     depends_on:
-      # - backend-csharp
       - backend-go
-
-  # backend-csharp:
-  #   build: ./backend-csharp
-  #   ports:
-  #     - "5000:5000"
-  #   environment:
-  #     - DOTNET_RUNNING_IN_CONTAINER=true
+    environment:
+      - VITE_SERVER_ADDRESS=http://localhost:5001
 
   backend-go:
     build: ./backend-go

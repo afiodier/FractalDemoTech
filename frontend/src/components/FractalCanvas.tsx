@@ -1,13 +1,15 @@
 import { useRef, useEffect } from "react";
 import { fetchFractal } from "../services/api";
+import { ComputeMode, ComputeMethod } from "../services/api";
 
 type Props = {
   center: { x: number; y: number };
   zoom: number;
-  method: "pixel" | "line" | "image";
+  mode: ComputeMode;
+  method: ComputeMethod;  
 };
 
-export default function FractalCanvas({ center, zoom, method }: Props) {
+export default function FractalCanvas({ center, zoom, mode, method }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Zoom & drag handling
@@ -56,13 +58,14 @@ export default function FractalCanvas({ center, zoom, method }: Props) {
       canvas.removeEventListener("mousemove", onMouseMove);
       canvas.removeEventListener("mouseup", onMouseUp);
     };
-  }, [center, zoom, method]);
+  }, [center, zoom, mode]);
 
   const draw = async () => {
     if (!canvasRef.current) return;
     const img = await fetchFractal({
       center,
       zoom,
+      mode,
       method,
       width: canvasRef.current.width,
       height: canvasRef.current.height,
@@ -76,5 +79,5 @@ export default function FractalCanvas({ center, zoom, method }: Props) {
     ctx?.putImageData(imgData, 0, 0);
   };
 
-  return <canvas ref={canvasRef} width={800} height={600} />;
+  return <canvas ref={canvasRef} width={200} height={200} />;
 }

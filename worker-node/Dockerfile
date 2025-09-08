@@ -1,12 +1,21 @@
-FROM node:20-alpine AS build
+# worker-node/Dockerfile
+FROM node:24 AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build   # optional if you want to compile TS
+RUN npm run build
 
-FROM node:20-alpine
+# Runtime image
+FROM node:24
 WORKDIR /app
-COPY --from=build /app .
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
+
+# (If you want to keep the source for debugging, copy also /app/src)
+
+# Expose the worker port
 EXPOSE 6003
-CMD ["node", "src/index.js"]
+
+# Use the compiled JavaScript
+CMD ["node", "dist/index.js"]
