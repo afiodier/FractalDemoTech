@@ -1,0 +1,51 @@
+.
+├── frontend/                    # React + TS
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── FractalCanvas.tsx
+│   │   │   ├── CoordInput.tsx
+│   │   │   └── CenterDisplay.tsx
+│   │   ├── hooks/
+│   │   │   └── useFractal.ts
+│   │   ├── services/
+│   │   │   └── api.ts
+│   │   ├── App.tsx
+│   │   ├── index.tsx
+│   │   └── styles.css
+│   ├── .env
+│   ├── tsconfig.json
+│   ├── package.json
+│   └── Dockerfile
+│
+├── backend-csharp/              # .NET 8 Web API
+│   ├── src/
+│   │   ├── Controllers/
+│   │   │   └── FractalController.cs
+│   │   ├── Program.cs
+│   │   └── Startup.cs
+│   ├── Dockerfile
+│   └── project.csproj
+│
+├── backend-go/                  # Go (net/http) API
+│   ├── src/
+│   │   └── main.go
+│   └── Dockerfile
+│
+├── worker-go/                   # Go worker
+│   ├── src/
+│   │   └── main.go
+│   └── Dockerfile
+│
+├── worker-csharp/               # C# worker
+│   ├── src/
+│   │   └── Program.cs
+│   └── Dockerfile
+│
+├── worker-node/                 # Node+TS worker
+│   ├── src/
+│   │   └── index.ts
+│   ├── tsconfig.json
+│   └── Dockerfile
+│
+├── docker-compose.yml
+└── .gitignore

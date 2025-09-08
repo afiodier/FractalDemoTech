@@ -1,0 +1,21 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# .NET
+bin/
+obj/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Go
+bin/
+vendor/
+go.sum
+go.mod
+
+# Docker
+docker-compose.override.yml

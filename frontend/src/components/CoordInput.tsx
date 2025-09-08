@@ -1,0 +1,43 @@
+type Props = {
+  center: { x: number; y: number };
+  onChange: (c: { x: number; y: number }) => void;
+  zoom: number;
+  onZoom: (z: number) => void;
+};
+
+export default function CoordInput({
+  center,
+  onChange,
+  zoom,
+  onZoom,
+}: Props) {
+  return (
+    <div className="coord-input">
+      <label>
+        X:
+        <input
+          type="number"
+          value={center.x}
+          onChange={e => onChange({ ...center, x: parseFloat(e.target.value) })}
+        />
+      </label>
+      <label>
+        Y:
+        <input
+          type="number"
+          value={center.y}
+          onChange={e => onChange({ ...center, y: parseFloat(e.target.value) })}
+        />
+      </label>
+      <label>
+        Zoom:
+        <input
+          type="number"
+          step="0.01"
+          value={zoom}
+          onChange={e => onZoom(parseFloat(e.target.value))}
+        />
+      </label>
+    </div>
+  );
+}

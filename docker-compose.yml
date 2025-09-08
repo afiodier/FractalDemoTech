@@ -1,0 +1,35 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      # - backend-csharp
+      - backend-go
+
+  # backend-csharp:
+  #   build: ./backend-csharp
+  #   ports:
+  #     - "5000:5000"
+  #   environment:
+  #     - DOTNET_RUNNING_IN_CONTAINER=true
+
+  backend-go:
+    build: ./backend-go
+    ports:
+      - "5001:5001"
+
+  worker-go:
+    build: ./worker-go
+    ports:
+      - "6001:6001"
+
+  worker-csharp:
+    build: ./worker-csharp
+    ports:
+      - "6002:6002"
+
+  worker-node:
+    build: ./worker-node
+    ports:
+      - "6003:6003"
