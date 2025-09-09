@@ -58,7 +58,7 @@ export default function FractalCanvas({ center, zoom, mode, method }: Props) {
       canvas.removeEventListener("mousemove", onMouseMove);
       canvas.removeEventListener("mouseup", onMouseUp);
     };
-  }, [center, zoom, mode]);
+  }, [center, zoom, mode, method]);
 
   const draw = async () => {
     if (!canvasRef.current) return;
@@ -79,5 +79,5 @@ export default function FractalCanvas({ center, zoom, mode, method }: Props) {
     ctx?.putImageData(imgData, 0, 0);
   };
 
-  return <canvas ref={canvasRef} width={200} height={200} />;
+  return <canvas ref={canvasRef} width={500} height={500} />;
 }

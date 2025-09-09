@@ -46,3 +46,16 @@ ul {
   padding-inline-start: 20px;
 }
 
+.reset-btn {
+  margin-left: 1rem;
+  padding: 0.3rem 0.6rem;
+  background: #f44336;      /* red */
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.reset-btn:hover {
+  background: #d32f2f;
+}

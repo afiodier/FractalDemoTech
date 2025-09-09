@@ -6,8 +6,7 @@ import bodyParser from "body-parser";
 
 const app = express();
 app.use(express.json());
- app.use(bodyParser.json());
-const server = app.listen(6002);
+app.use(bodyParser.json());
 //later
 const corsOptions = {
 	origin: process.env.FRONTEND_URL, // Remplacez par le port de votre frontend si nécessaire
@@ -16,45 +15,80 @@ const corsOptions = {
 };
 app.use(cors<express.Request>());
 
-app.post("/compute", (req: Request, res: Response) => {
-	const { width, height, centerX, centerY, zoom } = req.body;
-	const pixels: number[] = [];
-	console.log("worker node received request:", req.body);
-
-	const iterations = 100;
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			// map pixel to complex plane
-			const re = (x / width - 0.5) * 2 / zoom + centerX;
-			const im = (y / height - 0.5) * 2 / zoom + centerY;
-			let zRe = re, zIm = im;
-
-			let i;
-			for (i = 0; i < iterations; i++) {
-				const newRe = zRe * zRe - zIm * zIm + re;
-				const newIm = 2 * zRe * zIm + im;
-				zRe = newRe; zIm = newIm;
-				if (zRe * zRe + zIm * zIm > 4) break;
-			}
-
-			const val = 255 - Math.floor(255 * i / iterations);
-			pixels.push(val, val, val, 255);
-		}
-	}
-
-	res.json({ width, height, data: pixels });
-});
-
-
-
-console.log("Worker node listening on port 6002");
-
-process.on('SIGINT', () => gracefulShutdown(server));
-process.on('SIGTERM', () => gracefulShutdown(server));
-
-function gracefulShutdown(server : any) {
-    server.close(() => {
-        console.log('Server closed');
-        process.exit(0);
-});
+type ComputeRequest = {
+  width: number;
+  height: number;
+  centerX: number;
+  centerY: number;
+  zoom: number;
+  mode: "pixel" | "line" | "image";
+  lineIdx: number | undefined;
 };
+
+type ComputeResponse = {
+  width: number;
+  height: number;
+  data: number[];
+};
+
+function computeJulia(req: ComputeRequest): number[] {
+  const w = req.width;
+  const h = req.height;
+  const lineIdx = req.lineIdx;
+  const iterations = 100;
+  const pixels: number[] = new Array((lineIdx !== undefined ? w : w * h) * 4);
+
+  const yStart = lineIdx ?? 0;
+  const yEnd = lineIdx !== undefined ? lineIdx + 1 : h;
+
+  for (let y = yStart; y < yEnd; y++) {
+    for (let x = 0; x < w; x++) {
+      const re = ((x / w) - 0.5) * 2 / req.zoom + req.centerX;
+      const im = ((y / h) - 0.5) * 2 / req.zoom + req.centerY;
+      let zRe = re, zIm = im;
+      let i;
+      for (i = 0; i < iterations; i++) {
+        const newRe = zRe * zRe - zIm * zIm + re;
+        const newIm = 2 * zRe * zIm + im;
+        zRe = newRe; zIm = newIm;
+        if (zRe * zRe + zIm * zIm > 4) break;
+      }
+      const val = 255 - Math.floor((255 * i) / iterations);
+      const idx = 4 * (y * w + x);
+      pixels[idx] = val;
+      pixels[idx + 1] = val;
+      pixels[idx + 2] = val;
+      pixels[idx + 3] = 255;
+    }
+  }
+
+  return pixels;
+}
+
+app.post("/compute", (req: Request, res: Response) => {
+  const body = req.body as ComputeRequest;
+  const data = computeJulia(body);
+
+  const out: ComputeResponse = {
+    width: body.width,
+    height: body.lineIdx !== undefined ? 1 : body.height,
+    data,
+  };
+
+  res.json(out);
+});
+
+const server = app.listen(6002, () => {
+  console.log("Node worker listening on :6002");
+});
+
+function gracefulShutdown() {
+  console.log("Shutting down Node worker…");
+  server.close(() => {
+    console.log("Node worker exited cleanly");
+    process.exit(0);
+  });
+}
+
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);

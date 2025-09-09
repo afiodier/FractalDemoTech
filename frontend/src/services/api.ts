@@ -19,16 +19,27 @@ export type FractalResponse = {
 };
 
 export async function fetchFractal(
-  params: FractalParams
+  params: FractalParams,
+  lineIndex?: number,
+   signal?: AbortSignal 
 ): Promise<FractalResponse> {
-  console.log("Fetching fractal with params:", params);
-  const url = "http://localhost:5001/fractal"; //`${process.env.VITE_SERVER_ADDRESS ?? "http://localhost:5001/fractal"}/fractal`;
-  const res = await fetch(
-    `${url}?method=${params.method}&mode=${params.mode}&width=${params.width}&height=${params.height}&centerX=${params.center.x}&centerY=${params.center.y}&zoom=${params.zoom}`
-  );
+  const query = new URLSearchParams({
+    method: params.method,
+    mode:   params.mode,
+    width:  params.width.toString(),
+    height: params.height.toString(),
+    centerX: params.center.x.toString(),
+    centerY: params.center.y.toString(),
+    zoom:   params.zoom.toString(),
+    ...(lineIndex !== undefined && { line: lineIndex.toString() })
+  });
 
-  console.log("Response status:", res.status);
-  console.log("Length of data:", (await res.json()).data.length);
-  if (!res.ok) throw new Error("Network error");
+  const url = `http://localhost:5001/fractal?${query.toString()}`;
+  const res = await fetch(url, { signal });
+
+  if (!res.ok) {
+    throw new Error(`Server returned ${res.status}`);
+  }
+
   return res.json();
 }

@@ -2,14 +2,21 @@ import { useState } from "react";
 import FractalCanvas from "./components/FractalCanvas";
 import CoordInput from "./components/CoordInput";
 import CenterDisplay from "./components/CenterDisplay";
-import { ComputeMode } from "./services/api";
+import { ComputeMode, ComputeMethod } from "./services/api";
 import MethodSelector from "./components/MethodSelector";
 
 export default function App() {
   const [center, setCenter] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [mode, setmode] = useState<ComputeMode>("line");
+  const [mode, setmode] = useState<ComputeMode>("image");
   const [method, setMethod] = useState<ComputeMethod>("go");
+
+   const resetView = () => {
+    setCenter({ x: 0, y: 0 });
+    setZoom(1);
+    setmode("image");   // <-- your preferred default
+    setMethod("go");
+  };
 
   return (
     <div className="app">
@@ -32,13 +39,20 @@ export default function App() {
           <option value="line">Per‑line</option>
           <option value="image">Whole image</option>
         </select>
+         <button
+          type="button"
+          onClick={resetView}
+          className="reset-btn"
+        >
+          Reset View
+        </button>
       </div>
       <CenterDisplay center={center} />
       <FractalCanvas
         center={center}
         zoom={zoom}
         method={method}
-        mode={method}
+        mode={mode}
       />
     </div>
   );

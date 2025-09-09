@@ -21,6 +21,8 @@ type ComputeRequest struct {
 	CenterY float64 `json:"centerY"`
 	Zoom    float64 `json:"zoom"`
 	Mode    string  `json:"mode"` // "pixel" | "line" | "image"
+	Method  string  // “go”, “node”, “csharp”
+	LineIdx *int
 }
 
 // Réponse du worker (exemple simplifié)
@@ -86,6 +88,7 @@ func fractalHandler(w http.ResponseWriter, r *http.Request) {
 	centerY, _ := strconv.ParseFloat(r.URL.Query().Get("centerY"), 64)
 	zoom, _ := strconv.ParseFloat(r.URL.Query().Get("zoom"), 64)
 	mode := r.URL.Query().Get("mode") // "pixel" | "line" | "image"
+	lineIdx, err := strconv.Atoi(r.URL.Query().Get("lineIdx"))
 
 	req := ComputeRequest{
 		Width:   width,
@@ -94,6 +97,11 @@ func fractalHandler(w http.ResponseWriter, r *http.Request) {
 		CenterY: centerY,
 		Zoom:    zoom,
 		Mode:    mode,
+		LineIdx: &lineIdx,
+	}
+
+	if err != nil {
+		req.LineIdx = nil // pas de lineIdx
 	}
 
 	resp, err := dispatchToWorker(method, req)
@@ -102,9 +110,7 @@ func fractalHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Log the response
-
-	log.Println("Go API returning response:", resp)
+	log.Println("Go API returning")
 
 	// Return response to client
 	w.Header().Set("Content-Type", "application/json")
