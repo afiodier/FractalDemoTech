@@ -4,13 +4,14 @@ import FractalCanvas from "./components/FractalCanvas";
 import CoordInput from "./components/CoordInput";
 import MethodSelector from "./components/MethodSelector";
 import CenterDisplay from "./components/CenterDisplay";
+import { ComputeMethod, ComputeMode } from "./services/api";
 
 export default function App() {
   const [center, setCenter] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [mode, setmode] = useState<ComputeMode>("image");
   const [method, setMethod] = useState<ComputeMethod>("go");
-  const [iterations, setIterations] = useState<number | undefined>(2);
+  const [iterations, setIterations] = useState<number | undefined>(27);
 
 
   /*  Callback that lifts the new centre up to this component  */

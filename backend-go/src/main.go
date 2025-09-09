@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -20,10 +21,10 @@ type ComputeRequest struct {
 	CenterX    float64 `json:"centerX"`
 	CenterY    float64 `json:"centerY"`
 	Zoom       float64 `json:"zoom"`
-	Mode       string  `json:"mode"` // "pixel" | "line" | "image"
-	Method     string  // “go”, “node”, “csharp”
-	LineIdx    *int
-	Iterations *int
+	Mode       string  `json:"mode"`   // "pixel" | "line" | "image"
+	Method     string  `json:"method"` // “go”, “node”, “csharp”
+	LineIdx    int     `json:"lineIdx"`
+	Iterations int     `json:"iterations"`
 }
 
 // Réponse du worker (exemple simplifié)
@@ -47,7 +48,7 @@ var workerURLs = map[string]string{
 // Dispatch function -------------------------------------------------------
 // ---------------------------------------------------------------------------
 
-func dispatchToWorker(worker string, req ComputeRequest) (*ComputeResponse, error) {
+func dispatchToWorker(worker string, req ComputeRequest) ([]byte, error) {
 	url, ok := workerURLs[worker]
 	if !ok {
 		return nil, fmt.Errorf("worker %s unknown", worker)
@@ -68,11 +69,7 @@ func dispatchToWorker(worker string, req ComputeRequest) (*ComputeResponse, erro
 		return nil, fmt.Errorf("worker %s returned %d", worker, resp.StatusCode)
 	}
 
-	var out ComputeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, err
-	}
-	return &out, nil
+	return io.ReadAll(resp.Body)
 }
 
 // ---------------------------------------------------------------------------
@@ -89,8 +86,8 @@ func fractalHandler(w http.ResponseWriter, r *http.Request) {
 	centerY, _ := strconv.ParseFloat(r.URL.Query().Get("centerY"), 64)
 	zoom, _ := strconv.ParseFloat(r.URL.Query().Get("zoom"), 64)
 	mode := r.URL.Query().Get("mode") // "pixel" | "line" | "image"
-	lineIdx, errIdx := strconv.Atoi(r.URL.Query().Get("lineIdx"))
-	iterations, errIterations := strconv.Atoi(r.URL.Query().Get("iterations"))
+	lineIdx, _ := strconv.Atoi(r.URL.Query().Get("lineIdx"))
+	iterations, _ := strconv.Atoi(r.URL.Query().Get("iterations"))
 
 	req := ComputeRequest{
 		Width:      width,
@@ -99,25 +96,16 @@ func fractalHandler(w http.ResponseWriter, r *http.Request) {
 		CenterY:    centerY,
 		Zoom:       zoom,
 		Mode:       mode,
-		LineIdx:    &lineIdx,
-		Iterations: &iterations,
-	}
-
-	if errIdx != nil {
-		req.LineIdx = nil // pas de lineIdx
-	}
-
-	if errIterations != nil {
-		i := 1
-		req.Iterations = &i
+		LineIdx:    lineIdx,
+		Iterations: iterations,
 	}
 
 	if iterations < 1 {
 		i := 1
-		req.Iterations = &i
+		req.Iterations = i
 	}
 
-	resp, err := dispatchToWorker(method, req)
+	data, err := dispatchToWorker(method, req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -126,8 +114,9 @@ func fractalHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Go API returning")
 
 	// Return response to client
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	w.Header().Set("Content-Type", "image/png")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
 
 // corsHandler ajoute les en‑têtes CORS à chaque requête.

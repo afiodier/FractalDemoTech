@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/png"
 	"log"
 	"net/http"
 	"os"
@@ -20,7 +23,7 @@ type ComputeRequest struct {
 	Zoom       float64 `json:"zoom"`
 	Iterations int     `json:"iterations"`
 	Mode       string  `json:"mode"` // "pixel" | "line" | "image"
-	LineIdx    *int
+	LineIdx    int     `json:"lineIdx"`
 }
 
 type ComputeResponse struct {
@@ -62,23 +65,24 @@ func main() {
 	log.Println("Go worker exited cleanly")
 }
 
-func computeJulia(req ComputeRequest) []int {
+func computeJulia(req ComputeRequest) []uint8 {
 	w, h := req.Width, req.Height
 	lineIdx := req.LineIdx
 	iterations := req.Iterations
-	pixels := make([]int, w*4)
 
 	y := 0
-	if lineIdx != nil {
-		y = *lineIdx
+	if req.Mode == "line" {
+		y = lineIdx
 		h = y + 1
+	} else {
+		lineIdx = 0
 	}
 
-	pixels = make([]int, w*h*4)
+	pixels := make([]uint8, w*(h-y)*4)
 	for ; y < h; y++ {
 		for x := 0; x < w; x++ {
 			re := (float64(x)/float64(w)-0.5)*2/req.Zoom + req.CenterX
-			im := (float64(y)/float64(h)-0.5)*2/req.Zoom + req.CenterY
+			im := (float64(y)/float64(req.Height)-0.5)*2/req.Zoom + req.CenterY
 			zRe, zIm := re, im
 
 			var i int
@@ -91,11 +95,11 @@ func computeJulia(req ComputeRequest) []int {
 				}
 			}
 
-			val := 255 - (255*i)/iterations
-			idx := (y*w + x) * 4
-			pixels[idx] = val
-			pixels[idx+1] = val
-			pixels[idx+2] = val
+			valUint8 := uint8(255 - (255*i)/iterations)
+			idx := ((y-lineIdx)*w + x) * 4
+			pixels[idx] = valUint8
+			pixels[idx+1] = valUint8
+			pixels[idx+2] = valUint8
 			pixels[idx+3] = 255
 		}
 	}
@@ -110,22 +114,24 @@ func computeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ---- 3.3 : calcul (toute l’image ou une seule ligne) ----
-	data := computeJulia(req)
-
-	// ---- 3.4 : construire la réponse JSON ----
 	var height int
-	if req.LineIdx != nil {
+	if req.Mode == "line" {
 		height = 1
 	} else {
 		height = req.Height
 	}
+	pixels := computeJulia(req)
 
-	out := ComputeResponse{
-		Width:  req.Width,
-		Height: height,
-		Data:   data,
+	img := image.NewRGBA(image.Rect(0, 0, req.Width, height))
+	copy(img.Pix, pixels)
+
+	buf := new(bytes.Buffer)
+	if err := png.Encode(buf, img); err != nil {
+		http.Error(w, "PNG encode failed", http.StatusInternalServerError)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(out)
+	w.Header().Set("Content-Type", "image/png")
+	w.WriteHeader(http.StatusOK)
+	w.Write(buf.Bytes())
 }

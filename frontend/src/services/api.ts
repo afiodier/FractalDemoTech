@@ -23,7 +23,7 @@ export async function fetchFractal(
   params: FractalParams,
   lineIndex?: number,
    signal?: AbortSignal 
-): Promise<FractalResponse> {
+): Promise<Blob> {
   const query = new URLSearchParams({
     method: params.method,
     mode:   params.mode,
@@ -32,7 +32,7 @@ export async function fetchFractal(
     centerX: params.center.x.toString(),
     centerY: params.center.y.toString(),
     zoom:   params.zoom.toString(),
-    ...(lineIndex !== undefined && { line: lineIndex.toString() }),
+    ...(lineIndex !== undefined && { lineIdx: lineIndex.toString() }),
     ...(params.iterations !== undefined && { iterations: params.iterations.toString() })
   });
 
@@ -43,5 +43,5 @@ export async function fetchFractal(
     throw new Error(`Server returned ${res.status}`);
   }
 
-  return res.json();
+  return res.blob();
 }

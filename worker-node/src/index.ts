@@ -2,6 +2,7 @@ import express from "express";
 import { Request, Response } from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
+import { PNG } from "pngjs";
 
 
 const app = express();
@@ -37,10 +38,11 @@ function computeJulia(req: ComputeRequest): number[] {
   const h = req.height;
   const lineIdx = req.lineIdx;
   const iterations = req.iterations ?? 100; 
-  const pixels: number[] = new Array((lineIdx !== undefined ? w : w * h) * 4);
+  
 
-  const yStart = lineIdx ?? 0;
-  const yEnd = lineIdx !== undefined ? lineIdx + 1 : h;
+  const yStart = req.mode === "line" ? (lineIdx?? 0) : 0;
+  const yEnd = req.mode === "line" ? (lineIdx?? 0) + 1 : h;
+  const pixels: number[] = new Array((w * (h - yStart)) * 4);
 
   for (let y = yStart; y < yEnd; y++) {
     for (let x = 0; x < w; x++) {
@@ -55,7 +57,7 @@ function computeJulia(req: ComputeRequest): number[] {
         if (zRe * zRe + zIm * zIm > 4) break;
       }
       const val = 255 - Math.floor((255 * i) / iterations);
-      const idx = 4 * (y * w + x);
+      const idx = 4 * ((y - yStart) * w + x);
       pixels[idx] = val;
       pixels[idx + 1] = val;
       pixels[idx + 2] = val;
@@ -70,13 +72,18 @@ app.post("/compute", (req: Request, res: Response) => {
   const body = req.body as ComputeRequest;
   const data = computeJulia(body);
 
-  const out: ComputeResponse = {
-    width: body.width,
-    height: body.lineIdx !== undefined ? 1 : body.height,
-    data,
-  };
 
-  res.json(out);
+  const png = new PNG({
+      width: body.width,
+      height: body.mode === "line" ? 1 : body.height,
+  });
+
+    data.forEach((val, idx) => {
+        png.data[idx] = val;
+    });
+
+    res.setHeader("Content-Type", "image/png");
+    png.pack().pipe(res);
 });
 
 const server = app.listen(6002, () => {

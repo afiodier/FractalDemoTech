@@ -1,7 +1,5 @@
-/* -----------------  frontend/src/components/FractalCanvas.tsx  ----------------- */
 import { useEffect, useRef, useState } from "react";
-import { fetchFractal } from "../services/api";
-import { ComputeMode, ComputeMethod } from "../services/api";
+import { fetchFractal, FractalParams, ComputeMode, ComputeMethod } from "../services/api";
 
 type Props = {
   center: { x: number; y: number };
@@ -20,13 +18,13 @@ export default function FractalCanvas({
   method,
   iterations,
   onCenterChange,
-  setZoom
+  setZoom,
 }: Props) {
+  /* 1️⃣  Canvas + drag helpers */
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  /*  1. Drag state + helpers  */
   const onMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     dragStart.current = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
@@ -41,7 +39,7 @@ export default function FractalCanvas({
       x: center.x - (dx / width) * 2 / zoom,
       y: center.y - (dy / height) * 2 / zoom,
     };
-    onCenterChange(newCenter);   // <‑‑ lift the state up
+    onCenterChange(newCenter);   // lift state up
   };
 
   const onMouseUp = () => {
@@ -52,34 +50,77 @@ export default function FractalCanvas({
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    zoom += delta;
-    setZoom(zoom);
+    const newZoom = zoom + delta;
+    setZoom(newZoom);
   };
 
+  /* 2️⃣  Effect: redraw whenever any input changes */
   useEffect(() => {
-    draw();
+    if (!canvasRef.current) return;
+    let cancelled = false;
+
+    const drawAllLines = async () => {
+      const canvas = canvasRef.current!;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Clear the canvas once before drawing
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      /* --- Image mode ---------------------------------------------------- */
+      if (mode === "image") {
+        const blob = await fetchFractal({
+          center,
+          zoom,
+          mode,
+          method,
+          width: canvas.width,
+          height: canvas.height,
+          iterations,
+        });
+
+        if (cancelled) return;
+        const bitmap = await createImageBitmap(blob);
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      /* --- Line mode ----------------------------------------------------- */
+      if (mode === "line") {
+        const totalLines = canvas.height;
+        for (let y = 0; y < totalLines; y++) {
+          if (cancelled) return;
+
+          /* request the single line */
+          const lineBlob = await fetchFractal(
+            {
+              center,
+              zoom,
+              mode,
+              method,
+              width: canvas.width,
+              height: canvas.height,
+              iterations,
+            },
+            y /* lineIndex */
+          );
+
+          /* turn PNG into a bitmap and draw it at the correct y‑offset */
+          const lineBitmap = await createImageBitmap(lineBlob);
+          ctx.drawImage(lineBitmap, 0, y, canvas.width, 1);
+        }
+        return;
+      }
+    };
+
+    drawAllLines();
+
+    return () => {
+      cancelled = true;
+    };
   }, [center, zoom, mode, method, iterations]);
 
-  const draw = async () => {
-    if (!canvasRef.current) return;
-    const img = await fetchFractal({
-      center,
-      zoom,
-      mode,
-      method,
-      width: canvasRef.current.width,
-      height: canvasRef.current.height,
-      iterations
-    });
-    const ctx = canvasRef.current.getContext("2d");
-    const imgData = new ImageData(
-      new Uint8ClampedArray(img.data),
-      img.width,
-      img.height
-    );
-    ctx?.putImageData(imgData, 0, 0);
-  };
-
+  /* 3️⃣  Render */
   return (
     <canvas
       ref={canvasRef}
