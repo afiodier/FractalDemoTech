@@ -1,4 +1,5 @@
-import { useRef, useEffect } from "react";
+/* -----------------  frontend/src/components/FractalCanvas.tsx  ----------------- */
+import { useEffect, useRef, useState } from "react";
 import { fetchFractal } from "../services/api";
 import { ComputeMode, ComputeMethod } from "../services/api";
 
@@ -6,59 +7,58 @@ type Props = {
   center: { x: number; y: number };
   zoom: number;
   mode: ComputeMode;
-  method: ComputeMethod;  
+  method: ComputeMethod;
+  iterations?: number;
+  onCenterChange: (c: { x: number; y: number }) => void;
+  setZoom: (z: number) => void;
 };
 
-export default function FractalCanvas({ center, zoom, mode, method }: Props) {
+export default function FractalCanvas({
+  center,
+  zoom,
+  mode,
+  method,
+  iterations,
+  onCenterChange,
+  setZoom
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
 
-  // Zoom & drag handling
+  /*  1. Drag state + helpers  */
+  const onMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    dragStart.current = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !dragStart.current || !canvasRef.current) return;
+    const { width, height } = canvasRef.current.getBoundingClientRect();
+    const dx = e.nativeEvent.offsetX - dragStart.current.x;
+    const dy = e.nativeEvent.offsetY - dragStart.current.y;
+    const newCenter = {
+      x: center.x - (dx / width) * 2 / zoom,
+      y: center.y - (dy / height) * 2 / zoom,
+    };
+    onCenterChange(newCenter);   // <‑‑ lift the state up
+  };
+
+  const onMouseUp = () => {
+    setIsDragging(false);
+    dragStart.current = null;
+  };
+
+  const onWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    zoom += delta;
+    setZoom(zoom);
+  };
+
   useEffect(() => {
-    const canvas = canvasRef.current!;
-    let isDragging = false;
-    let startX = 0,
-      startY = 0;
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      zoom += delta;
-      draw();
-    };
-
-    const onMouseDown = (e: MouseEvent) => {
-      isDragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      center.x -= dx * (1 / zoom);
-      center.y -= dy * (1 / zoom);
-      startX = e.clientX;
-      startY = e.clientY;
-      draw();
-    };
-
-    const onMouseUp = () => (isDragging = false);
-
-    canvas.addEventListener("wheel", onWheel);
-    canvas.addEventListener("mousedown", onMouseDown);
-    canvas.addEventListener("mousemove", onMouseMove);
-    canvas.addEventListener("mouseup", onMouseUp);
-
     draw();
-
-    return () => {
-      canvas.removeEventListener("wheel", onWheel);
-      canvas.removeEventListener("mousedown", onMouseDown);
-      canvas.removeEventListener("mousemove", onMouseMove);
-      canvas.removeEventListener("mouseup", onMouseUp);
-    };
-  }, [center, zoom, mode, method]);
+  }, [center, zoom, mode, method, iterations]);
 
   const draw = async () => {
     if (!canvasRef.current) return;
@@ -69,6 +69,7 @@ export default function FractalCanvas({ center, zoom, mode, method }: Props) {
       method,
       width: canvasRef.current.width,
       height: canvasRef.current.height,
+      iterations
     });
     const ctx = canvasRef.current.getContext("2d");
     const imgData = new ImageData(
@@ -79,5 +80,16 @@ export default function FractalCanvas({ center, zoom, mode, method }: Props) {
     ctx?.putImageData(imgData, 0, 0);
   };
 
-  return <canvas ref={canvasRef} width={500} height={500} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      width={800}
+      height={600}
+      style={{ cursor: isDragging ? "grabbing" : "grab" }}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onWheel={onWheel}
+    />
+  );
 }

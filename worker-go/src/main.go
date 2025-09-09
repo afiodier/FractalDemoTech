@@ -13,13 +13,14 @@ import (
 
 // same request/response shape as the API
 type ComputeRequest struct {
-	Width   int     `json:"width"`
-	Height  int     `json:"height"`
-	CenterX float64 `json:"centerX"`
-	CenterY float64 `json:"centerY"`
-	Zoom    float64 `json:"zoom"`
-	Mode    string  `json:"mode"` // "pixel" | "line" | "image"
-	LineIdx *int
+	Width      int     `json:"width"`
+	Height     int     `json:"height"`
+	CenterX    float64 `json:"centerX"`
+	CenterY    float64 `json:"centerY"`
+	Zoom       float64 `json:"zoom"`
+	Iterations int     `json:"iterations"`
+	Mode       string  `json:"mode"` // "pixel" | "line" | "image"
+	LineIdx    *int
 }
 
 type ComputeResponse struct {
@@ -64,7 +65,7 @@ func main() {
 func computeJulia(req ComputeRequest) []int {
 	w, h := req.Width, req.Height
 	lineIdx := req.LineIdx
-	iterations := 100
+	iterations := req.Iterations
 	pixels := make([]int, w*4)
 
 	y := 0

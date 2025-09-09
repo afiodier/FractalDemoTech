@@ -23,6 +23,7 @@ type ComputeRequest = {
   zoom: number;
   mode: "pixel" | "line" | "image";
   lineIdx: number | undefined;
+  iterations: number | undefined;
 };
 
 type ComputeResponse = {
@@ -35,7 +36,7 @@ function computeJulia(req: ComputeRequest): number[] {
   const w = req.width;
   const h = req.height;
   const lineIdx = req.lineIdx;
-  const iterations = 100;
+  const iterations = req.iterations ?? 100; 
   const pixels: number[] = new Array((lineIdx !== undefined ? w : w * h) * 4);
 
   const yStart = lineIdx ?? 0;

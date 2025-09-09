@@ -15,14 +15,15 @@ import (
 
 // Payload reçu par le backend
 type ComputeRequest struct {
-	Width   int     `json:"width"`
-	Height  int     `json:"height"`
-	CenterX float64 `json:"centerX"`
-	CenterY float64 `json:"centerY"`
-	Zoom    float64 `json:"zoom"`
-	Mode    string  `json:"mode"` // "pixel" | "line" | "image"
-	Method  string  // “go”, “node”, “csharp”
-	LineIdx *int
+	Width      int     `json:"width"`
+	Height     int     `json:"height"`
+	CenterX    float64 `json:"centerX"`
+	CenterY    float64 `json:"centerY"`
+	Zoom       float64 `json:"zoom"`
+	Mode       string  `json:"mode"` // "pixel" | "line" | "image"
+	Method     string  // “go”, “node”, “csharp”
+	LineIdx    *int
+	Iterations *int
 }
 
 // Réponse du worker (exemple simplifié)
@@ -88,20 +89,32 @@ func fractalHandler(w http.ResponseWriter, r *http.Request) {
 	centerY, _ := strconv.ParseFloat(r.URL.Query().Get("centerY"), 64)
 	zoom, _ := strconv.ParseFloat(r.URL.Query().Get("zoom"), 64)
 	mode := r.URL.Query().Get("mode") // "pixel" | "line" | "image"
-	lineIdx, err := strconv.Atoi(r.URL.Query().Get("lineIdx"))
+	lineIdx, errIdx := strconv.Atoi(r.URL.Query().Get("lineIdx"))
+	iterations, errIterations := strconv.Atoi(r.URL.Query().Get("iterations"))
 
 	req := ComputeRequest{
-		Width:   width,
-		Height:  height,
-		CenterX: centerX,
-		CenterY: centerY,
-		Zoom:    zoom,
-		Mode:    mode,
-		LineIdx: &lineIdx,
+		Width:      width,
+		Height:     height,
+		CenterX:    centerX,
+		CenterY:    centerY,
+		Zoom:       zoom,
+		Mode:       mode,
+		LineIdx:    &lineIdx,
+		Iterations: &iterations,
 	}
 
-	if err != nil {
+	if errIdx != nil {
 		req.LineIdx = nil // pas de lineIdx
+	}
+
+	if errIterations != nil {
+		i := 1
+		req.Iterations = &i
+	}
+
+	if iterations < 1 {
+		i := 1
+		req.Iterations = &i
 	}
 
 	resp, err := dispatchToWorker(method, req)

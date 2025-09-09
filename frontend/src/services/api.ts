@@ -10,6 +10,7 @@ export type FractalParams = {
   method: ComputeMethod;
   width: number;
   height: number;
+  iterations?: number; 
 };
 
 export type FractalResponse = {
@@ -31,7 +32,8 @@ export async function fetchFractal(
     centerX: params.center.x.toString(),
     centerY: params.center.y.toString(),
     zoom:   params.zoom.toString(),
-    ...(lineIndex !== undefined && { line: lineIndex.toString() })
+    ...(lineIndex !== undefined && { line: lineIndex.toString() }),
+    ...(params.iterations !== undefined && { iterations: params.iterations.toString() })
   });
 
   const url = `http://localhost:5001/fractal?${query.toString()}`;
