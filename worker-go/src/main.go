@@ -95,7 +95,10 @@ func computeJulia(req ComputeRequest) []uint8 {
 				}
 			}
 
-			valUint8 := uint8(255 - (255*i)/iterations)
+			valUint8 := uint8(255) //uint8(255 - (255*i)) //iterations)
+			if i == iterations {
+				valUint8 = uint8(0)
+			}
 			idx := ((y-lineIdx)*w + x) * 4
 			pixels[idx] = valUint8
 			pixels[idx+1] = valUint8

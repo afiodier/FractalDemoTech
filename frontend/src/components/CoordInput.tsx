@@ -1,8 +1,11 @@
+
 type Props = {
   center: { x: number; y: number };
   onChange: (c: { x: number; y: number }) => void;
   zoom: number;
   onZoom: (z: number) => void;
+  iterations: number;               
+  onIterationsChange: (i: number) => void;  
 };
 
 export default function CoordInput({
@@ -10,6 +13,8 @@ export default function CoordInput({
   onChange,
   zoom,
   onZoom,
+  iterations,              
+  onIterationsChange,       
 }: Props) {
   return (
     <div className="coord-input">
@@ -36,6 +41,27 @@ export default function CoordInput({
           step="0.01"
           value={zoom}
           onChange={e => onZoom(parseFloat(e.target.value))}
+        />
+      </label>
+
+      {/* Slider + input numérique pour les itérations */}
+      <label>
+        Iterations:
+        <input
+          type="range"
+          min="1"
+          max="1000"
+          step="1"
+          value={iterations}
+          onChange={e => onIterationsChange(parseInt(e.target.value, 10))}
+        />
+        <input
+          type="number"
+          min="1"
+          max="1000"
+          step="1"
+          value={iterations}
+          onChange={e => onIterationsChange(parseInt(e.target.value, 10))}
         />
       </label>
     </div>

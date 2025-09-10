@@ -1,85 +1,103 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { fetchFractal, FractalParams, FractalResponse } from "../services/api";
-import throttle from "lodash.throttle";
+// frontend/src/hooks/useFractal.ts
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { fetchFractal, FractalParams, FractalResponse } from '../services/api';
+import throttle from 'lodash.throttle';
 
 /**
- * A reusable hook that fetches a fractal image from the API.
+ * Hook that fetches a fractal image from the API.
  *
- * @param params   The request parameters (center, zoom, mode, etc.)
- * @returns { data, loading, error }
+ * Guarantees:
+ * 1. Only one request in flight at a time.
+ * 2. If the component re‑renders (i.e. `params` changes) the old request is aborted.
+ * 3. Any pending throttled calls are cancelled immediately.
  */
 export function useFractal(
   params: FractalParams
-): { data: FractalResponse | null; loading: boolean; error: Error | null } {
-  const [data, setData]   = useState<FractalResponse | null>(null);
+): { blob: Blob | null; rendered: number; loading: boolean; error: Error | null } {
+  /* ---------- state ---------- */
+  const [blob, setBlob] = useState<Blob | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState<Error | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [rendered, setRendered] = useState<number>(0);
 
+  /* ---------- abort controller ---------- */
   const abortCtrlRef = useRef<AbortController | null>(null);
 
- const throttledFetch = useCallback(
+  async function concatBlobs(...blobs : Blob[]): Promise<Blob> {
+    // Read each blob as an ArrayBuffer
+    const buffers = await Promise.all(
+      blobs.map(blob => blob.arrayBuffer())
+    );
+
+    // Merge all buffers into one single ArrayBuffer
+    const totalSize = buffers.reduce((sum, buf) => sum + buf.byteLength, 0);
+    const merged = new Uint8Array(totalSize);
+    let offset = 0;
+    for (const buf of buffers) {
+      merged.set(new Uint8Array(buf), offset);
+      offset += buf.byteLength;
+    }
+
+    // Create a new Blob from the merged buffer
+    return new Blob([merged.buffer], { type: blobs[0].type });
+  }
+
+  /* ---------- throttled fetch ---------- */
+  const throttledFetch = useCallback(
     throttle(async (p: FractalParams) => {
+      // New request => create a fresh controller and remember it.
       const controller = new AbortController();
       abortCtrlRef.current = controller;
+
       try {
+        let result : Blob = new Blob();
         // ---- MODE LINE ----
         if (p.mode === "line") {
-          const full = new Uint8ClampedArray(p.width * p.height * 4);
-
           for (let y = 0; y < p.height; y++) {
-            // a) Call the API for one line
-            const res = await fetchFractal(p, y, controller.signal);
-            if (y < p.height - 1) {
-              setData({ width: p.width, height: y + 1, data: Array.from(full) });
-            }
-
-            // b) The response contains only the current line:
-            //    - width == params.width
-            //    - height == 1
-            //    - data.length == width * 4
-            if (res.height !== 1) {
-              throw new Error(`Expected height 1, got ${res.height}`);
-            }
-
-            // c) Copy the line into the full buffer
-            const src = new Uint8ClampedArray(res.data);
-            const dstStart = y * p.width * 4;
-            full.set(src, dstStart);
+            if (controller.signal.aborted) return;
+            const full = await fetchFractal(p, y, controller.signal);
+            result = await concatBlobs(result, full);
+            setRendered(y);
+            setBlob(full);
           }
 
-          setData({ width: p.width, height: p.height, data: Array.from(full) });
+          setRendered(p.height);
+          setBlob(result);
         } else {
           // ---- MODE IMAGE / PIXEL ----
           const full = await fetchFractal(p, undefined, controller.signal);
           abortCtrlRef.current.abort();
-          setData(full);
-        }
 
+          setRendered(0);
+          setBlob(full);
+        }
       } catch (e: any) {
-        setError(e);
+        if (e.name !== 'AbortError') setError(e);
       } finally {
         setLoading(false);
       }
-    }, 300),           // 300 ms throttle
+    }, 3000),
     []
   );
 
+  /* ---------- trigger fetch on param change ---------- */
   useEffect(() => {
-     if (abortCtrlRef.current) {
-      abortCtrlRef.current.abort();   // <-- cancel previous request
-    }
+    // Abort any ongoing fetch before starting a new one
+    abortCtrlRef.current?.abort();
 
     setLoading(true);
-    throttledFetch.cancel?.();
+    throttledFetch.cancel?.(); // cancel any pending throttled call
     throttledFetch(params);
 
+    // Cleanup: abort the request when the component unmounts
     return () => {
-      if (abortCtrlRef.current) {
-        abortCtrlRef.current.abort();
-      }
+      abortCtrlRef.current?.abort();
     };
+  }, [params.center, params.zoom, params.iterations, params.width, params.height, params.mode, params.method]);
 
-  }, [params, throttledFetch]);
+  useEffect(() => {
+    console.log(params);
+  }, [params.center, params.zoom, params.iterations, params.width, params.height, params.mode, params.method]);
 
-  return { data, loading, error };
+  return { blob, rendered, loading, error };
 }

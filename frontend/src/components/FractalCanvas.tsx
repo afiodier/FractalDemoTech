@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import { fetchFractal, FractalParams, ComputeMode, ComputeMethod } from "../services/api";
+// frontend/src/components/FractalCanvas.tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { useFractal } from '../hooks/useFractal';
+import { FractalResponse } from '../services/api';
 
 type Props = {
   center: { x: number; y: number };
   zoom: number;
-  mode: ComputeMode;
-  method: ComputeMethod;
+  mode: 'pixel' | 'line' | 'image';
+  method: 'go' | 'node' | 'csharp';
+  width: number;
+  height: number;
   iterations?: number;
   onCenterChange: (c: { x: number; y: number }) => void;
   setZoom: (z: number) => void;
@@ -16,12 +20,25 @@ export default function FractalCanvas({
   zoom,
   mode,
   method,
+  width,
+  height,
   iterations,
   onCenterChange,
   setZoom,
 }: Props) {
-  /* 1️⃣  Canvas + drag helpers */
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Hook that does the fetch + cancel logic
+  const { blob, rendered, loading, error } = useFractal({
+    center,
+    zoom,
+    mode,
+    method,
+    width,
+    height,
+    iterations,
+  });
+
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -47,90 +64,61 @@ export default function FractalCanvas({
     dragStart.current = null;
   };
 
-  const onWheel = (e: WheelEvent) => {
+  const onWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     const newZoom = zoom + delta;
     setZoom(newZoom);
   };
 
-  /* 2️⃣  Effect: redraw whenever any input changes */
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    let cancelled = false;
+  // Draw the image when data arrives
+    useEffect(() => {
+    if (!canvasRef.current || !blob) return;
 
-    const drawAllLines = async () => {
-      const canvas = canvasRef.current!;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
 
-      // Clear the canvas once before drawing
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 1️⃣ Create a temporary object URL from the Blob
+    const url = URL.createObjectURL(blob);
+    //const lineBitmap = createImageBitmap(blob);
 
-      /* --- Image mode ---------------------------------------------------- */
-      if (mode === "image") {
-        const blob = await fetchFractal({
-          center,
-          zoom,
-          mode,
-          method,
-          width: canvas.width,
-          height: canvas.height,
-          iterations,
-        });
+    // 2️⃣ Use an Image to load that URL
+    const img = new Image();
+    img.onload = () => {
+      // 3️⃣ Draw the image onto the canvas
+      ctx.drawImage(img, 0, rendered, width, mode == 'image' ? height : 1);
 
-        if (cancelled) return;
-        const bitmap = await createImageBitmap(blob);
-        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-        return;
-      }
-
-      /* --- Line mode ----------------------------------------------------- */
-      if (mode === "line") {
-        const totalLines = canvas.height;
-        for (let y = 0; y < totalLines; y++) {
-          if (cancelled) return;
-
-          /* request the single line */
-          const lineBlob = await fetchFractal(
-            {
-              center,
-              zoom,
-              mode,
-              method,
-              width: canvas.width,
-              height: canvas.height,
-              iterations,
-            },
-            y /* lineIndex */
-          );
-
-          /* turn PNG into a bitmap and draw it at the correct y‑offset */
-          const lineBitmap = await createImageBitmap(lineBlob);
-          ctx.drawImage(lineBitmap, 0, y, canvas.width, 1);
-        }
-        return;
-      }
+      // 4️⃣ Clean‑up: revoke the URL (free memory)
+      URL.revokeObjectURL(url);
     };
+    img.onerror = err => console.error('Failed to load fractal image', err);
 
-    drawAllLines();
+    img.src = url;          // start loading
+  }, [blob, width, height, rendered]);
 
+    // Draw the image when data arrives
+    useEffect(() => {
+    if (!canvasRef.current || !blob) return;
+
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+
+    
+    // Optional: if you ever want to clear the canvas on unmount
     return () => {
-      cancelled = true;
+      ctx.clearRect(0, 0, width, height);
     };
-  }, [center, zoom, mode, method, iterations]);
+  }, [width, height, mode, method, zoom, center, iterations]);
 
-  /* 3️⃣  Render */
   return (
-    <canvas
-      ref={canvasRef}
-      width={800}
-      height={600}
-      style={{ cursor: isDragging ? "grabbing" : "grab" }}
+    <div style={{ position: 'relative' }}>
+      {loading && <div className="loading">Loading…</div>}
+      {error && <div className="error">{error.message}</div>}
+      <canvas ref={canvasRef} width={width} height={height} 
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
-      onWheel={onWheel}
-    />
+      onWheel={onWheel}/>
+    </div>
   );
 }
