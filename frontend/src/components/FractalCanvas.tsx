@@ -1,7 +1,6 @@
 // frontend/src/components/FractalCanvas.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useFractal } from '../hooks/useFractal';
-import { FractalResponse } from '../services/api';
 
 type Props = {
   center: { x: number; y: number };
@@ -28,7 +27,6 @@ export default function FractalCanvas({
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Hook that does the fetch + cancel logic
   const { blob, rendered, loading, error } = useFractal({
     center,
     zoom,
@@ -56,7 +54,7 @@ export default function FractalCanvas({
       x: center.x - (dx / width) * 2 / zoom,
       y: center.y - (dy / height) * 2 / zoom,
     };
-    onCenterChange(newCenter);   // lift state up
+    onCenterChange(newCenter);
   };
 
   const onMouseUp = () => {
@@ -71,40 +69,32 @@ export default function FractalCanvas({
     setZoom(newZoom);
   };
 
-  // Draw the image when data arrives
+
     useEffect(() => {
     if (!canvasRef.current || !blob) return;
 
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
 
-    // 1️⃣ Create a temporary object URL from the Blob
     const url = URL.createObjectURL(blob);
-    //const lineBitmap = createImageBitmap(blob);
 
-    // 2️⃣ Use an Image to load that URL
     const img = new Image();
     img.onload = () => {
-      // 3️⃣ Draw the image onto the canvas
       ctx.drawImage(img, 0, rendered, width, mode == 'image' ? height : 1);
-
-      // 4️⃣ Clean‑up: revoke the URL (free memory)
       URL.revokeObjectURL(url);
     };
     img.onerror = err => console.error('Failed to load fractal image', err);
 
-    img.src = url;          // start loading
+    img.src = url;
   }, [blob, width, height, rendered]);
 
-    // Draw the image when data arrives
-    useEffect(() => {
+
+  useEffect(() => {
     if (!canvasRef.current || !blob) return;
 
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
 
-    
-    // Optional: if you ever want to clear the canvas on unmount
     return () => {
       ctx.clearRect(0, 0, width, height);
     };

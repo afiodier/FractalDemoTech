@@ -44,7 +44,6 @@ export default function CoordInput({
         />
       </label>
 
-      {/* Slider + input numérique pour les itérations */}
       <label>
         Iterations:
         <input

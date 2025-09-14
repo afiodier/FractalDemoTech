@@ -1,4 +1,3 @@
-/* -----------------  frontend/src/App.tsx  ----------------- */
 import { useEffect, useState } from "react";
 import FractalCanvas from "./components/FractalCanvas";
 import CoordInput from "./components/CoordInput";
@@ -12,7 +11,6 @@ export default function App() {
   const [mode, setmode] = useState<ComputeMode>("image");
   const [method, setMethod] = useState<ComputeMethod>("go");
   const [iterations, setIterations] = useState<number>(27);
-
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
 
   useEffect(() => {
@@ -21,7 +19,6 @@ export default function App() {
     return () => window.removeEventListener('resize', handler);
   }, []);
 
-  /*  Callback that lifts the new centre up to this component  */
   const onCenterChange = (c: { x: number; y: number }) => setCenter(c);
 
   const resetView = () => {

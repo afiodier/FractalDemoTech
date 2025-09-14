@@ -1,5 +1,3 @@
-import { arrayBuffer } from "stream/consumers";
-
 export type ComputeMode = "pixel" | "line" | "image";
 export type ComputeMethod = "go" | "node" | "csharp";
 
@@ -13,16 +11,13 @@ export type FractalParams = {
   iterations?: number; 
 };
 
-export type FractalResponse = {
-  width: number;
-  height: number;
-  data: number[]; // RGBA flat array
+type fractalFetchOptions = {
+  params: FractalParams;
+  lineIndex?: number;
+  signal?: AbortSignal;
 };
 
-export async function fetchFractal(
-  params: FractalParams,
-  lineIndex?: number,
-   signal?: AbortSignal 
+export async function fetchFractal({ params, lineIndex, signal }: fractalFetchOptions
 ): Promise<Blob> {
   const query = new URLSearchParams({
     method: params.method,

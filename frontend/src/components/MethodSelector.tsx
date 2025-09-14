@@ -1,4 +1,3 @@
-// frontend/src/components/MethodSelector.tsx
 import { ComputeMethod } from "../services/api";
 
 type Props = {
