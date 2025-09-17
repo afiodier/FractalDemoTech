@@ -1,6 +1,6 @@
 # Fractal Demo
 
-A full‑stack project that renders fractals (Julia/Mandelbrot) in real time.
+A full‑stack project that renders fractals ( Mandelbrot) in real time.
 The UI (React/TS) sends compute requests to a lightweight API that forwards
 the request to one of several worker implementations (Go, Node, C#).
 The worker returns a flat RGBA pixel array, which the browser draws onto a
